@@ -18,9 +18,9 @@ def runBenchMarking(key_file, workset):
     for op in ["create", "get", "get_data", "set", "erase", "it_create", "it_next", "it_key", "it_value"]:
         results = []
         for db in ["rocksdb", "chainbase"]:
-            cmd = "./benchmark_kv -k " + key_file + " -o " + op + " -b " + db + " -v 512 -s 7"
-            if op=="get" or op=="get_data" or op=="set":
-                cmd += " -w " + workset
+            cmd = f"./benchmark_kv -k {key_file} -o {op} -b {db} -v 512 -s 7"
+            if op in ["get", "get_data", "set"]:
+                cmd += f" -w {workset}"
 
             proc = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             outs,errs= proc.communicate()

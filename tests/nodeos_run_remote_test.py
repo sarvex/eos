@@ -41,11 +41,25 @@ try:
     cluster.killall(allInstances=killAll)
     cluster.cleanup()
 
-    Print ("producing nodes: %s, non-producing nodes: %d, topology: %s, delay between nodes launch(seconds): %d" %
-           (pnodes, total_nodes-pnodes, topo, delay))
+    Print(
+        (
+            "producing nodes: %s, non-producing nodes: %d, topology: %s, delay between nodes launch(seconds): %d"
+            % (total_nodes, 0, topo, delay)
+        )
+    )
     Print("Stand up cluster")
 
-    if cluster.launch(pnodes=pnodes, totalNodes=total_nodes, prodCount=prodCount, topo=topo, delay=delay, onlyBios=onlyBios) is False:
+    if (
+        cluster.launch(
+            total_nodes=total_nodes,
+            totalNodes=total_nodes,
+            prodCount=prodCount,
+            topo=topo,
+            delay=delay,
+            onlyBios=onlyBios,
+        )
+        is False
+    ):
         errorExit("Failed to stand up eos cluster.")
 
     Print ("Wait for Cluster stabilization")
@@ -57,10 +71,10 @@ try:
     defproduceraPrvtKey=producerKeys["defproducera"]["private"]
     defproducerbPrvtKey=producerKeys["defproducerb"]["private"]
 
-    cmd="%s --dont-launch --defproducera_prvt_key %s --defproducerb_prvt_key %s %s %s %s" % (actualTest, defproduceraPrvtKey, defproducerbPrvtKey, "-v" if debug else "", "--leave-running" if dontKill else "", "--only-bios" if onlyBios else "")
-    Print("Starting up %s test: %s" % ("nodeos", actualTest))
+    cmd = f'{actualTest} --dont-launch --defproducera_prvt_key {defproduceraPrvtKey} --defproducerb_prvt_key {defproducerbPrvtKey} {"-v" if debug else ""} {"--leave-running" if dontKill else ""} {"--only-bios" if onlyBios else ""}'
+    Print(f"Starting up nodeos test: {actualTest}")
     Print("cmd: %s\n" % (cmd))
-    if 0 != subprocess.call(cmd, shell=True):
+    if subprocess.call(cmd, shell=True) != 0:
         errorExit("failed to run cmd.")
 
     testSuccessful=True

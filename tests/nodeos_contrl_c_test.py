@@ -42,11 +42,11 @@ try:
     cluster.killall(allInstances=killAll)
     cluster.cleanup()
 
-    specificExtraNodeosArgs = {}
-    specificExtraNodeosArgs[0] = "--plugin eosio::producer_plugin --plugin eosio::chain_api_plugin --plugin eosio::http_plugin "
     "--plugin eosio::txn_test_gen_plugin --plugin eosio::producer_api_plugin "
-    # producer nodes will be mapped to 0 through totalProducerNodes-1, so the number totalProducerNodes will be the non-producing node
-    specificExtraNodeosArgs[totalProducerNodes] = "--plugin eosio::producer_plugin --plugin eosio::chain_api_plugin --plugin eosio::http_plugin "
+    specificExtraNodeosArgs = {
+        0: "--plugin eosio::producer_plugin --plugin eosio::chain_api_plugin --plugin eosio::http_plugin ",
+        totalProducerNodes: "--plugin eosio::producer_plugin --plugin eosio::chain_api_plugin --plugin eosio::http_plugin ",
+    }
     "--plugin eosio::txn_test_gen_plugin --plugin eosio::producer_api_plugin "
 
     # ***   setup topogrophy   ***
@@ -79,10 +79,12 @@ try:
 
     # create accounts via eosio as otherwise a bid is needed
     for account in accounts:
-        Print("Create new account %s via %s" % (account.name, cluster.eosioAccount.name))
+        Print(f"Create new account {account.name} via {cluster.eosioAccount.name}")
         trans=nonProdNode.createInitializeAccount(account, cluster.eosioAccount, stakedDeposit=0, waitForTransBlock=True, stakeNet=1000, stakeCPU=1000, buyRAM=1000, exitOnError=True)
         transferAmount="100000000.0000 {0}".format(CORE_SYMBOL)
-        Print("Transfer funds %s from account %s to %s" % (transferAmount, cluster.eosioAccount.name, account.name))
+        Print(
+            f"Transfer funds {transferAmount} from account {cluster.eosioAccount.name} to {account.name}"
+        )
         nonProdNode.transferFunds(cluster.eosioAccount, account, transferAmount, "test transfer", waitForTransBlock=True)
         trans=nonProdNode.delegatebw(account, 20000000.0000, 20000000.0000, waitForTransBlock=True, exitOnError=True)
 

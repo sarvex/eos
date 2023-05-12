@@ -28,8 +28,9 @@ def stop_keosd():
 
 def check_cleos_stderr(stderr: bytes, expected_match: bytes):
     if expected_match not in stderr:
-        raise RuntimeError("'{}' not found in {}'".format(
-            expected_match.decode(), stderr.decode()))
+        raise RuntimeError(
+            f"'{expected_match.decode()}' not found in {stderr.decode()}'"
+        )
 
 
 def keosd_auto_launch_test():
@@ -45,9 +46,9 @@ def keosd_auto_launch_test():
     # Verify that keosd auto-launching works.
     completed_process = run_cleos_wallet_command('list', no_auto_keosd=False)
     if completed_process.returncode != 0:
-        raise RuntimeError("Expected that keosd would be started, "
-                           "but got an error instead: {}".format(
-                               completed_process.stderr.decode()))
+        raise RuntimeError(
+            f"Expected that keosd would be started, but got an error instead: {completed_process.stderr.decode()}"
+        )
     check_cleos_stderr(completed_process.stderr, b'launched')
 
 

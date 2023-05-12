@@ -96,7 +96,7 @@ try:
 
     (success, trans) = producerNode.pushTransaction(trx, permissions="payloadless", opts=None)
     assert success and trans, "Failed to push transaction with context free data"
-    
+
     cfTrxBlockNum = int(trans["processed"]["block_num"])
     cfTrxId = trans["transaction_id"]
 
@@ -114,15 +114,28 @@ try:
     producerNode.kill(signal.SIGTERM)
 
     # prune the transaction with block-num=trans["block_num"], id=cfTrxId
-    cluster.getBlockLog(producerNodeIndex, blockLogAction=BlockLogAction.prune_transactions, extraArgs=" --block-num {} --transaction {}".format(trans_from_full["block_num"], cfTrxId), exitOnError=True)
+    cluster.getBlockLog(
+        producerNodeIndex,
+        blockLogAction=BlockLogAction.prune_transactions,
+        extraArgs=f' --block-num {trans_from_full["block_num"]} --transaction {cfTrxId}',
+        exitOnError=True,
+    )
 
     # try to prune the transaction where it doesn't belong
     try:
-        cluster.getBlockLog(producerNodeIndex, blockLogAction=BlockLogAction.prune_transactions, extraArgs=" --block-num {} --transaction {}".format(cfTrxBlockNum - 1, cfTrxId), throwException=True, silentErrors=True)
+        cluster.getBlockLog(
+            producerNodeIndex,
+            blockLogAction=BlockLogAction.prune_transactions,
+            extraArgs=f" --block-num {cfTrxBlockNum - 1} --transaction {cfTrxId}",
+            throwException=True,
+            silentErrors=True,
+        )
     except:
         ex = sys.exc_info()[0]
         msg=ex.output.decode("utf-8")
-        assert "does not contain the following transactions: " + cfTrxId in msg, "The transaction id is not displayed in the console when it cannot be found"
+        assert (
+            f"does not contain the following transactions: {cfTrxId}" in msg
+        ), "The transaction id is not displayed in the console when it cannot be found"
 
     #
     #  restart the producer node with pruned cfd

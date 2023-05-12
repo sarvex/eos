@@ -171,13 +171,12 @@ try:
             if trans is None:
                 if transTimeDelayed:
                     return (None, None)
-                else:
-                    if Utils.Debug:
-                        Print("Transaction not found for trans id: %s. Will wait %d seconds to see if it arrives in a block." %
-                              (transId, args.transaction_time_delta))
-                    transTimeDelayed = True
-                    node.waitForTransInBlock(transId, timeout = args.transaction_time_delta)
-                    continue
+                if Utils.Debug:
+                    Print("Transaction not found for trans id: %s. Will wait %d seconds to see if it arrives in a block." %
+                          (transId, args.transaction_time_delta))
+                transTimeDelayed = True
+                node.waitForTransInBlock(transId, timeout = args.transaction_time_delta)
+                continue
 
             lastIrreversibleBlockNum = trans["last_irreversible_block"]
             blockNum = Node.getTransBlockNum(trans)
@@ -211,7 +210,9 @@ try:
         if transId in transToBlock:
             return
         (block, trans) = cacheTransIdInBlock(transId, transToBlock, node)
-        assert trans is not None, Print("ERROR: could not find transaction for transId: %s" % (transId))
+        assert trans is not None, Print(
+            f"ERROR: could not find transaction for transId: {transId}"
+        )
         assert block is not None, Print("ERROR: could not retrieve block with block num: %d, from transId: %s, trans: %s" % (blockNum, transId, json.dumps(trans, indent=2)))
 
     transToBlock = {}

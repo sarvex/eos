@@ -70,7 +70,7 @@ try:
     Print("Stand up EOS wallet keosd")
     accountsCount=total_nodes
     walletName="MyWallet"
-    Print("Creating wallet %s if one doesn't already exist." % walletName)
+    Print(f"Creating wallet {walletName} if one doesn't already exist.")
     wallet=walletMgr.create(walletName, [cluster.eosioAccount,cluster.defproduceraAccount,cluster.defproducerbAccount])
 
     Print ("Populate wallet with %d accounts." % (accountsCount))
@@ -80,9 +80,11 @@ try:
     defproduceraAccount=cluster.defproduceraAccount
     eosioAccount=cluster.eosioAccount
 
-    Print("Importing keys for account %s into wallet %s." % (defproduceraAccount.name, wallet.name))
+    Print(
+        f"Importing keys for account {defproduceraAccount.name} into wallet {wallet.name}."
+    )
     if not walletMgr.importKey(defproduceraAccount, wallet):
-        errorExit("Failed to import key for account %s" % (defproduceraAccount.name))
+        errorExit(f"Failed to import key for account {defproduceraAccount.name}")
 
     Print("Create accounts.")
     if not cluster.createAccounts(eosioAccount):

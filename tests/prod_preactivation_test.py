@@ -55,7 +55,7 @@ ClientName="cleos"
 try:
     TestHelper.printSystemInfo("BEGIN prod_preactivation_test.py")
     cluster.setWalletMgr(walletMgr)
-    Print("SERVER: %s" % (server))
+    Print(f"SERVER: {server}")
     Print("PORT: %d" % (port))
 
     if localTest and not dontLaunch:
@@ -72,13 +72,13 @@ try:
     cluster.validateAccounts(None)
 
     node = cluster.getNode(0)
-    cmd = "curl %s/v1/producer/get_supported_protocol_features" % (node.endpointHttp)
-    Print("try to get supported feature list from Node 0 with cmd: %s" % (cmd))
+    cmd = f"curl {node.endpointHttp}/v1/producer/get_supported_protocol_features"
+    Print(f"try to get supported feature list from Node 0 with cmd: {cmd}")
     feature0=Utils.runCmdReturnJson(cmd)
 
     node = cluster.getNode(1)
-    cmd = "curl %s/v1/producer/get_supported_protocol_features" % (node.endpointHttp)
-    Print("try to get supported feature list from Node 1 with cmd: %s" % (cmd))
+    cmd = f"curl {node.endpointHttp}/v1/producer/get_supported_protocol_features"
+    Print(f"try to get supported feature list from Node 1 with cmd: {cmd}")
     feature1=Utils.runCmdReturnJson(cmd)
 
     if feature0 != feature1:
@@ -104,11 +104,13 @@ try:
 
     node0 = cluster.getNode(0)
     contract="eosio.bios"
-    contractDir="unittests/contracts/old_versions/v1.7.0-develop-preactivate_feature/%s" % (contract)
-    wasmFile="%s.wasm" % (contract)
-    abiFile="%s.abi" % (contract)
+    contractDir = f"unittests/contracts/old_versions/v1.7.0-develop-preactivate_feature/{contract}"
+    wasmFile = f"{contract}.wasm"
+    abiFile = f"{contract}.abi"
 
-    Print("publish a new bios contract %s should fails because env.is_feature_activated unresolveable" % (contractDir))
+    Print(
+        f"publish a new bios contract {contractDir} should fails because env.is_feature_activated unresolveable"
+    )
     retMap = node0.publishContract(cluster.eosioAccount, contractDir, wasmFile, abiFile, True, shouldFail=True)
 
     if retMap["output"].decode("utf-8").find("unresolveable") < 0:
@@ -118,37 +120,39 @@ try:
     Print("Wait for node 1 to produce...")
     node = cluster.getNode(1)
     while secwait > 0:
-       info = node.getInfo()
-       if info["head_block_producer"] >= "defproducerl" and info["head_block_producer"] <= "defproduceru":
-          break
-       time.sleep(1)
-       secwait = secwait - 1
+        info = node.getInfo()
+        if info["head_block_producer"] >= "defproducerl" and info["head_block_producer"] <= "defproduceru":
+           break
+        time.sleep(1)
+        secwait -= 1
 
     secwait = 30
     Print("Waiting until node 0 start to produce...")
     node = cluster.getNode(1)
     while secwait > 0:
-       info = node.getInfo()
-       if info["head_block_producer"] >= "defproducera" and info["head_block_producer"] <= "defproducerk":
-          break
-       time.sleep(1)
-       secwait = secwait - 1
+        info = node.getInfo()
+        if info["head_block_producer"] >= "defproducera" and info["head_block_producer"] <= "defproducerk":
+           break
+        time.sleep(1)
+        secwait -= 1
 
     if secwait <= 0:
        errorExit("No producer of node 0")
 
     cmd = "curl --data-binary '{\"protocol_features_to_activate\":[\"%s\"]}' %s/v1/producer/schedule_protocol_feature_activations" % (digest, node.endpointHttp)
 
-    Print("try to preactivate feature on node 1, cmd: %s" % (cmd))
+    Print(f"try to preactivate feature on node 1, cmd: {cmd}")
     result = Utils.runCmdReturnJson(cmd)
 
     if result["result"] != "ok":
         errorExit("failed to preactivate feature from producer plugin on node 1")
     else:
-        Print("feature PREACTIVATE_FEATURE (%s) preactivation success" % (digest))
+        Print(f"feature PREACTIVATE_FEATURE ({digest}) preactivation success")
 
     time.sleep(0.6)
-    Print("publish a new bios contract %s should fails because node1 is not producing block yet" % (contractDir))
+    Print(
+        f"publish a new bios contract {contractDir} should fails because node1 is not producing block yet"
+    )
     retMap = node0.publishContract(cluster.eosioAccount, contractDir, wasmFile, abiFile, True, shouldFail=True)
     if retMap["output"].decode("utf-8").find("unresolveable") < 0:
         errorExit("bios contract not result in expected unresolveable error")
@@ -156,11 +160,11 @@ try:
     Print("now wait for node 1 produce a block...")
     secwait = 30 # wait for node 1 produce a block
     while secwait > 0:
-       info = node.getInfo()
-       if info["head_block_producer"] >= "defproducerl" and info["head_block_producer"] <= "defproduceru":
-          break
-       time.sleep(1)
-       secwait = secwait - 1
+        info = node.getInfo()
+        if info["head_block_producer"] >= "defproducerl" and info["head_block_producer"] <= "defproduceru":
+           break
+        time.sleep(1)
+        secwait -= 1
 
     if secwait <= 0:
        errorExit("No blocks produced by node 1")

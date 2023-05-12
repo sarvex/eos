@@ -47,14 +47,22 @@ cluster.setWalletMgr(walletMgr)
 def backupBlksDir(nodeId):
    dataDir = Utils.getNodeDataDir(nodeId)
    sourceDir = os.path.join(dataDir, "blocks")
-   destinationDir = os.path.join(os.path.dirname(dataDir), os.path.basename(dataDir) + "-backup", "blocks")
+   destinationDir = os.path.join(
+       os.path.dirname(dataDir),
+       f"{os.path.basename(dataDir)}-backup",
+       "blocks",
+   )
    shutil.copytree(sourceDir, destinationDir)
 
 def recoverBackedupBlksDir(nodeId):
    dataDir = Utils.getNodeDataDir(nodeId)
    # Delete existing one and copy backed up one
    existingBlocksDir = os.path.join(dataDir, "blocks")
-   backedupBlocksDir = os.path.join(os.path.dirname(dataDir), os.path.basename(dataDir) + "-backup", "blocks")
+   backedupBlocksDir = os.path.join(
+       os.path.dirname(dataDir),
+       f"{os.path.basename(dataDir)}-backup",
+       "blocks",
+   )
    shutil.rmtree(existingBlocksDir, ignore_errors=True)
    shutil.copytree(backedupBlocksDir, existingBlocksDir)
 
@@ -98,8 +106,10 @@ def ensureHeadLibAndForkDbHeadIsAdvancing(nodeToTest):
    head, lib, forkDbHead = getHeadLibAndForkDbHead(nodeToTest)
    waitForBlksProducedAndLibAdvanced()
    headAfterWaiting, libAfterWaiting, forkDbHeadAfterWaiting = getHeadLibAndForkDbHead(nodeToTest)
-   assert headAfterWaiting > head and libAfterWaiting > lib and forkDbHeadAfterWaiting > forkDbHead, \
-      "Either Head ({} -> {})/ Lib ({} -> {})/ Fork Db Head ({} -> {}) is not advancing".format(head, headAfterWaiting, lib, libAfterWaiting, forkDbHead, forkDbHeadAfterWaiting)
+   assert (
+       headAfterWaiting > head and libAfterWaiting > lib
+       and forkDbHeadAfterWaiting > forkDbHead
+   ), f"Either Head ({head} -> {headAfterWaiting})/ Lib ({lib} -> {libAfterWaiting})/ Fork Db Head ({forkDbHead} -> {forkDbHeadAfterWaiting}) is not advancing"
 
 # Confirm the head lib and fork db of irreversible mode
 # Under any condition of irreversible mode:
@@ -109,15 +119,23 @@ def ensureHeadLibAndForkDbHeadIsAdvancing(nodeToTest):
 # - head == libBeforeSwitchMode == lib and forkDbHead == headBeforeSwitchMode == forkDbHeadBeforeSwitchMode
 def confirmHeadLibAndForkDbHeadOfIrrMode(nodeToTest, headLibAndForkDbHeadBeforeSwitchMode=None):
    head, lib, forkDbHead = getHeadLibAndForkDbHead(nodeToTest)
-   assert head == lib, "Head ({}) should be equal to lib ({})".format(head, lib)
-   assert forkDbHead >= head, "Fork db head ({}) should be larger or equal to the head ({})".format(forkDbHead, head)
+   assert head == lib, f"Head ({head}) should be equal to lib ({lib})"
+   assert (
+       forkDbHead >= head
+   ), f"Fork db head ({forkDbHead}) should be larger or equal to the head ({head})"
 
    if headLibAndForkDbHeadBeforeSwitchMode:
       headBeforeSwitchMode, libBeforeSwitchMode, forkDbHeadBeforeSwitchMode = headLibAndForkDbHeadBeforeSwitchMode
-      assert head == libBeforeSwitchMode, "Head ({}) should be equal to lib before switch mode ({})".format(head, libBeforeSwitchMode)
-      assert lib == libBeforeSwitchMode, "Lib ({}) should be equal to lib before switch mode ({})".format(lib, libBeforeSwitchMode)
-      assert forkDbHead == headBeforeSwitchMode and forkDbHead == forkDbHeadBeforeSwitchMode, \
-         "Fork db head ({}) should be equal to head before switch mode ({}) and fork db head before switch mode ({})".format(forkDbHead, headBeforeSwitchMode, forkDbHeadBeforeSwitchMode)
+      assert (
+          head == libBeforeSwitchMode
+      ), f"Head ({head}) should be equal to lib before switch mode ({libBeforeSwitchMode})"
+      assert (
+          lib == libBeforeSwitchMode
+      ), f"Lib ({lib}) should be equal to lib before switch mode ({libBeforeSwitchMode})"
+      assert (
+          forkDbHead == headBeforeSwitchMode
+          and forkDbHead == forkDbHeadBeforeSwitchMode
+      ), f"Fork db head ({forkDbHead}) should be equal to head before switch mode ({headBeforeSwitchMode}) and fork db head before switch mode ({forkDbHeadBeforeSwitchMode})"
 
 # Confirm the head lib and fork db of speculative mode
 # Under any condition of speculative mode:
@@ -127,16 +145,23 @@ def confirmHeadLibAndForkDbHeadOfIrrMode(nodeToTest, headLibAndForkDbHeadBeforeS
 # - head == forkDbHeadBeforeSwitchMode == forkDbHead and lib == headBeforeSwitchMode == libBeforeSwitchMode
 def confirmHeadLibAndForkDbHeadOfSpecMode(nodeToTest, headLibAndForkDbHeadBeforeSwitchMode=None):
    head, lib, forkDbHead = getHeadLibAndForkDbHead(nodeToTest)
-   assert head >= lib, "Head should be larger or equal to lib (head: {}, lib: {})".format(head, lib)
-   assert head == forkDbHead, "Head ({}) should be equal to fork db head ({})".format(head, forkDbHead)
+   assert (
+       head >= lib
+   ), f"Head should be larger or equal to lib (head: {head}, lib: {lib})"
+   assert (head == forkDbHead
+           ), f"Head ({head}) should be equal to fork db head ({forkDbHead})"
 
    if headLibAndForkDbHeadBeforeSwitchMode:
       headBeforeSwitchMode, libBeforeSwitchMode, forkDbHeadBeforeSwitchMode = headLibAndForkDbHeadBeforeSwitchMode
-      assert head == forkDbHeadBeforeSwitchMode, "Head ({}) should be equal to fork db head before switch mode ({})".format(head, forkDbHeadBeforeSwitchMode)
-      assert lib == headBeforeSwitchMode and lib == libBeforeSwitchMode, \
-         "Lib ({}) should be equal to head before switch mode ({}) and lib before switch mode ({})".format(lib, headBeforeSwitchMode, libBeforeSwitchMode)
-      assert forkDbHead == forkDbHeadBeforeSwitchMode, \
-         "Fork db head ({}) should be equal to fork db head before switch mode ({}) ".format(forkDbHead, forkDbHeadBeforeSwitchMode)
+      assert (
+          head == forkDbHeadBeforeSwitchMode
+      ), f"Head ({head}) should be equal to fork db head before switch mode ({forkDbHeadBeforeSwitchMode})"
+      assert (
+          lib == headBeforeSwitchMode and lib == libBeforeSwitchMode
+      ), f"Lib ({lib}) should be equal to head before switch mode ({headBeforeSwitchMode}) and lib before switch mode ({libBeforeSwitchMode})"
+      assert (
+          forkDbHead == forkDbHeadBeforeSwitchMode
+      ), f"Fork db head ({forkDbHead}) should be equal to fork db head before switch mode ({forkDbHeadBeforeSwitchMode}) "
 
 def relaunchNode(node: Node, chainArg="", addSwapFlags=None, relaunchAssertMessage="Fail to relaunch"):
    isRelaunchSuccess = node.relaunch(chainArg=chainArg, addSwapFlags=addSwapFlags, timeout=relaunchTimeout, cachePopen=True)
@@ -192,15 +217,17 @@ try:
       try:
          # Relaunch killed node so it can be used for the test
          nodeToTest = cluster.getNode(nodeIdOfNodeToTest)
-         Utils.Print("Re-launch node #{} to excute test scenario: {}".format(nodeIdOfNodeToTest, runTestScenario.__name__))
+         Utils.Print(
+             f"Re-launch node #{nodeIdOfNodeToTest} to excute test scenario: {runTestScenario.__name__}"
+         )
          relaunchNode(nodeToTest, relaunchAssertMessage="Fail to relaunch before running test scenario")
 
          # Run test scenario
          runTestScenario(nodeIdOfNodeToTest, nodeToTest)
-         resultDesc = "!!!TEST CASE #{} ({}) IS SUCCESSFUL".format(nodeIdOfNodeToTest, runTestScenario.__name__)
+         resultDesc = f"!!!TEST CASE #{nodeIdOfNodeToTest} ({runTestScenario.__name__}) IS SUCCESSFUL"
          testResult = True
       except Exception as e:
-         resultDesc = "!!!BUG IS CONFIRMED ON TEST CASE #{} ({}): {}".format(nodeIdOfNodeToTest, runTestScenario.__name__, e)
+         resultDesc = f"!!!BUG IS CONFIRMED ON TEST CASE #{nodeIdOfNodeToTest} ({runTestScenario.__name__}): {e}"
       finally:
          Utils.Print(resultDesc)
          testResultMsgs.append(resultDesc)
@@ -357,12 +384,18 @@ try:
          # Start from clean data dir, recover back up blocks, and then relaunch with irreversible snapshot
          removeState(nodeIdOfNodeToTest)
          recoverBackedupBlksDir(nodeIdOfNodeToTest) # this function will delete the existing blocks dir first
-         relaunchNode(nodeToTest, chainArg=" --snapshot {}".format(getLatestSnapshot(nodeIdOfNodeToTest)), addSwapFlags={"--read-mode": "speculative"})
+         relaunchNode(
+             nodeToTest,
+             chainArg=f" --snapshot {getLatestSnapshot(nodeIdOfNodeToTest)}",
+             addSwapFlags={"--read-mode": "speculative"},
+         )
          confirmHeadLibAndForkDbHeadOfSpecMode(nodeToTest)
          # Ensure it automatically replays "reversible blocks", i.e. head lib and fork db should be the same
          headLibAndForkDbHeadAfterRelaunch = getHeadLibAndForkDbHead(nodeToTest)
-         assert headLibAndForkDbHeadBeforeShutdown == headLibAndForkDbHeadAfterRelaunch, \
-            "Head, Lib, and Fork Db after relaunch is different {} vs {}".format(headLibAndForkDbHeadBeforeShutdown, headLibAndForkDbHeadAfterRelaunch)
+         assert (
+             headLibAndForkDbHeadBeforeShutdown ==
+             headLibAndForkDbHeadAfterRelaunch
+         ), f"Head, Lib, and Fork Db after relaunch is different {headLibAndForkDbHeadBeforeShutdown} vs {headLibAndForkDbHeadAfterRelaunch}"
 
          # Start production and wait until lib advance, ensure everything is alright
          startProdNode()
@@ -378,8 +411,10 @@ try:
          removeState(nodeIdOfNodeToTest)
          relaunchNode(nodeToTest)
          headLibAndForkDbHeadAfterRelaunch = getHeadLibAndForkDbHead(nodeToTest)
-         assert headLibAndForkDbHeadBeforeShutdown == headLibAndForkDbHeadAfterRelaunch, \
-            "Head, Lib, and Fork Db after relaunch is different {} vs {}".format(headLibAndForkDbHeadBeforeShutdown, headLibAndForkDbHeadAfterRelaunch)
+         assert (
+             headLibAndForkDbHeadBeforeShutdown ==
+             headLibAndForkDbHeadAfterRelaunch
+         ), f"Head, Lib, and Fork Db after relaunch is different {headLibAndForkDbHeadBeforeShutdown} vs {headLibAndForkDbHeadAfterRelaunch}"
       finally:
          stopProdNode()
 

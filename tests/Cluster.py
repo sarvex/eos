@@ -27,13 +27,14 @@ class PFSetupPolicy:
     FULL = 2 # This will only happen if the cluster is bootstrapped (i.e. dontBootstrap == False)
     @staticmethod
     def hasPreactivateFeature(policy):
-        return policy == PFSetupPolicy.PREACTIVATE_FEATURE_ONLY or \
-                policy == PFSetupPolicy.FULL
+        return policy in [PFSetupPolicy.PREACTIVATE_FEATURE_ONLY, PFSetupPolicy.FULL]
     @staticmethod
     def isValid(policy):
-        return policy == PFSetupPolicy.NONE or \
-               policy == PFSetupPolicy.PREACTIVATE_FEATURE_ONLY or \
-               policy == PFSetupPolicy.FULL
+        return policy in [
+            PFSetupPolicy.NONE,
+            PFSetupPolicy.PREACTIVATE_FEATURE_ONLY,
+            PFSetupPolicy.FULL,
+        ]
 
 # Class for generating distinct names for many accounts
 class NamedAccounts:
@@ -44,14 +45,11 @@ class NamedAccounts:
         self.accounts=cluster.createAccountKeys(numAccounts)
         if self.accounts is None:
             Utils.errorExit("FAILURE - create keys")
-        accountNum = 0
-        for account in self.accounts:
+        for accountNum, account in enumerate(self.accounts):
             Utils.Print("NamedAccounts Name for %d" % (accountNum))
             account.name=self.setName(accountNum)
-            accountNum+=1
 
     def setName(self, num):
-        retStr="test"
         digits=[]
         maxDigitVal=5
         maxDigits=8
@@ -62,8 +60,7 @@ class NamedAccounts:
             digits.append(digit)
 
         digits.reverse()
-        retStr += "".join(map(str, digits))
-
+        retStr = "test" + "".join(map(str, digits))
         Utils.Print("NamedAccounts Name for %d is %s" % (temp, retStr))
         return retStr
 
@@ -133,13 +130,11 @@ class Cluster(object):
     @staticmethod
     def __defaultAlternateVersionLabels():
         """Return a labels dictionary with just the "current" label to path set."""
-        labels={}
-        labels["current"]="./"
-        return labels
+        return {"current": "./"}
 
     def setAlternateVersionLabels(self, file):
         """From the provided file return a dictionary of labels to paths."""
-        Utils.Print("alternate file=%s" % (file))
+        Utils.Print(f"alternate file={file}")
         self.alternateVersionLabels=Cluster.__defaultAlternateVersionLabels()
         if file is None:
             # only have "current"
@@ -154,7 +149,7 @@ class Cluster(object):
                 label=match[0]
                 path=match[1]
                 if label=="current":
-                    Utils.Print("ERROR: cannot overwrite default label %s with path=%s" % (label, path))
+                    Utils.Print(f"ERROR: cannot overwrite default label {label} with path={path}")
                     continue
                 self.alternateVersionLabels[label]=path
                 if Utils.Debug: Utils.Print("Version label \"%s\" maps to \"%s\"" % (label, path))

@@ -19,17 +19,19 @@ import re
 ###############################################################
 def isValidBlockProducer(prodsActive, blockNum, node):
     blockProducer=node.getBlockProducerByNum(blockNum)
-    if blockProducer not in prodsActive:
-        return False
-    return prodsActive[blockProducer]
+    return prodsActive[blockProducer] if blockProducer in prodsActive else False
 
 def validBlockProducer(prodsActive, prodsSeen, blockNum, node):
     blockProducer=node.getBlockProducerByNum(blockNum)
     if blockProducer not in prodsActive:
-        Utils.cmdError("unexpected block producer %s at blockNum=%s" % (blockProducer,blockNum))
+        Utils.cmdError(
+            f"unexpected block producer {blockProducer} at blockNum={blockNum}"
+        )
         Utils.errorExit("Failed because of invalid block producer")
     if not prodsActive[blockProducer]:
-        Utils.cmdError("block producer %s for blockNum=%s not elected, belongs to node %s" % (blockProducer, blockNum, ProducerToNode.map[blockProducer]))
+        Utils.cmdError(
+            f"block producer {blockProducer} for blockNum={blockNum} not elected, belongs to node {ProducerToNode.map[blockProducer]}"
+        )
         Utils.errorExit("Failed because of incorrect block producer")
     prodsSeen[blockProducer]=True
     return blockProducer
@@ -48,16 +50,16 @@ def setProds(sharedProdKey):
         setProdsStr += ' { "producer_name": "%s", "block_signing_key": "%s" }' % (name, key)
 
     setProdsStr += ' ] }'
-    Utils.Print("setprods: %s" % (setProdsStr))
+    Utils.Print(f"setprods: {setProdsStr}")
     opts="--permission eosio@active"
     # pylint: disable=redefined-variable-type
     trans=cluster.biosNode.pushMessage("eosio", "setprods", setProdsStr, opts)
     if trans is None or not trans[0]:
-        Utils.Print("ERROR: Failed to set producer with cmd %s" % (setProdsStr))
+        Utils.Print(f"ERROR: Failed to set producer with cmd {setProdsStr}")
 
 def verifyProductionRounds(trans, node, prodsActive, rounds):
     blockNum=node.getNextCleanProductionCycle(trans)
-    Utils.Print("Validating blockNum=%s" % (blockNum))
+    Utils.Print(f"Validating blockNum={blockNum}")
 
     temp=Utils.Debug
     Utils.Debug=False
@@ -69,7 +71,9 @@ def verifyProductionRounds(trans, node, prodsActive, rounds):
         adjust=True
         blockProducer=node.getBlockProducerByNum(blockNum)
         if lastBlockProducer!=blockProducer:
-            Utils.Print("blockProducer=%s for blockNum=%s is for node=%s" % (blockProducer, blockNum, ProducerToNode.map[blockProducer]))
+            Utils.Print(
+                f"blockProducer={blockProducer} for blockNum={blockNum} is for node={ProducerToNode.map[blockProducer]}"
+            )
         lastBlockProducer=blockProducer
         blockNum+=1
 
@@ -83,41 +87,44 @@ def verifyProductionRounds(trans, node, prodsActive, rounds):
         invalidCount+=1
         if lastBlockProducer==blockProducer:
             saw+=1
+        elif saw>=12:
+            startingFrom=blockNum
+            if saw>12:
+                Utils.Print(
+                    f"ERROR!!!!!!!!!!!!!!      saw={saw}, blockProducer={blockProducer}, blockNum={blockNum}"
+                )
+            break
         else:
-            if saw>=12:
-                startingFrom=blockNum
-                if saw>12:
-                    Utils.Print("ERROR!!!!!!!!!!!!!!      saw=%s, blockProducer=%s, blockNum=%s" % (saw,blockProducer,blockNum))
-                break
-            else:
-                if saw > sawHigh:
-                    sawHigh = saw
-                    Utils.Print("sawHigh=%s" % (sawHigh))
-                if doPrint < 5:
-                    doPrint+=1
-                    Utils.Print("saw=%s, blockProducer=%s, blockNum=%s" % (saw,blockProducer,blockNum))
-                lastBlockProducer=blockProducer
-                saw=1
+            if saw > sawHigh:
+                sawHigh = saw
+                Utils.Print(f"sawHigh={sawHigh}")
+            if doPrint < 5:
+                doPrint+=1
+                Utils.Print(f"saw={saw}, blockProducer={blockProducer}, blockNum={blockNum}")
+            lastBlockProducer=blockProducer
+            saw=1
         blockProducer=node.getBlockProducerByNum(blockNum)
         blockNum+=1
 
     if adjust:
         blockNum-=1
 
-    Utils.Print("ADJUSTED %s blocks" % (invalidCount-1))
+    Utils.Print(f"ADJUSTED {invalidCount - 1} blocks")
 
     prodsSeen=None
     reportFirstMissedBlock=False
-    Utils.Print("Verify %s complete rounds of all producers producing" % (rounds))
+    Utils.Print(f"Verify {rounds} complete rounds of all producers producing")
 
     prodsSize = len(prodsActive)
     for i in range(0, rounds):
         prodsSeen={}
         lastBlockProducer=None
         for j in range(0, prodsSize):
-            # each new set of 12 blocks should have a different blockProducer 
+            # each new set of 12 blocks should have a different blockProducer
             if lastBlockProducer is not None and lastBlockProducer==node.getBlockProducerByNum(blockNum):
-                Utils.cmdError("expected blockNum %s to be produced by any of the valid producers except %s" % (blockNum, lastBlockProducer))
+                Utils.cmdError(
+                    f"expected blockNum {blockNum} to be produced by any of the valid producers except {lastBlockProducer}"
+                )
                 Utils.errorExit("Failed because of incorrect block producer order")
 
             # make sure that the next set of 12 blocks all have the same blockProducer
@@ -128,14 +135,16 @@ def verifyProductionRounds(trans, node, prodsActive, rounds):
                     if not reportFirstMissedBlock:
                         printStr=""
                         newBlockNum=blockNum-18
-                        for l in range(0,36):
-                            printStr+="%s" % (newBlockNum)
+                        for _ in range(0,36):
+                            printStr += f"{newBlockNum}"
                             printStr+=":"
                             newBlockProducer=node.getBlockProducerByNum(newBlockNum)
-                            printStr+="%s" % (newBlockProducer)
+                            printStr += f"{newBlockProducer}"
                             printStr+="  "
                             newBlockNum+=1
-                        Utils.Print("NOTE: expected blockNum %s (started from %s) to be produced by %s, but produded by %s: round=%s, prod slot=%s, prod num=%s - %s" % (blockNum, startingFrom, lastBlockProducer, blockProducer, i, j, k, printStr))
+                        Utils.Print(
+                            f"NOTE: expected blockNum {blockNum} (started from {startingFrom}) to be produced by {lastBlockProducer}, but produded by {blockProducer}: round={i}, prod slot={j}, prod num={k} - {printStr}"
+                        )
                     reportFirstMissedBlock=True
                     break
                 blockNum+=1
@@ -196,14 +205,14 @@ try:
     numprod = totalNodes + 1
 
     trans=None
-    prodsActive={}
-    prodsActive["shrproducera"] = True
-    prodsActive["defproducera"] = True
-    prodsActive["defproducerb"] = True
-    prodsActive["defproducerc"] = True
-
+    prodsActive = {
+        "shrproducera": True,
+        "defproducera": True,
+        "defproducerb": True,
+        "defproducerc": True,
+    }
     Print("Wait for initial schedule: defproducera(node 0) shrproducera(node 2) defproducerb(node 1) defproducerc(node 2)")
-    
+
     tries=10
     while tries > 0:
         node.infoValid = False
@@ -211,7 +220,7 @@ try:
         if node.infoValid and node.lastRetrievedHeadBlockProducer != "eosio":
             break
         time.sleep(1)
-        tries = tries-1
+        tries -= 1
     if tries == 0:
         Utils.errorExit("failed to wait for initial schedule")
 
@@ -246,7 +255,7 @@ try:
         if node.infoValid and node.lastRetrievedHeadBlockProducer == "shrproducera":
             break
         time.sleep(1)
-        tries = tries-1
+        tries -= 1
     if tries == 0:
         Utils.errorExit("shrproducera failed to produce")
 

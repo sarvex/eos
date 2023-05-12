@@ -130,91 +130,122 @@ class Rodeos:
             shutil.rmtree(self.rodeosDir, ignore_errors=True)
 
     def waitTillReady(self):
-        Utils.waitForTruth(lambda:  Utils.runCmdArrReturnStr(['curl', '-H', 'Accept: application/json', self.endpoint + 'v1/chain/get_info'], silentErrors=True) != "" , timeout=30)
+            Utils.waitForTruth(
+                lambda: Utils.runCmdArrReturnStr(
+                    [
+                        'curl',
+                        '-H',
+                        'Accept: application/json',
+                        f'{self.endpoint}v1/chain/get_info',
+                    ],
+                    silentErrors=True,
+                ) != "",
+                timeout=30,
+            )
 
     def get_block(self, blockNum):
-        request_body = { "block_num_or_id": blockNum }
-        return Utils.runCmdArrReturnJson(['curl', '-X', 'POST', '-H', 'Content-Type: application/json', '-H', 'Accept: application/json', self.endpoint + 'v1/chain/get_block', '--data', json.dumps(request_body)])
+            request_body = { "block_num_or_id": blockNum }
+            return Utils.runCmdArrReturnJson([
+                'curl',
+                '-X',
+                'POST',
+                '-H',
+                'Content-Type: application/json',
+                '-H',
+                'Accept: application/json',
+                f'{self.endpoint}v1/chain/get_block',
+                '--data',
+                json.dumps(request_body),
+            ])
         
     def get_info(self):
-        return Utils.runCmdArrReturnJson(['curl', '-H', 'Accept: application/json', self.endpoint + 'v1/chain/get_info'])
+            return Utils.runCmdArrReturnJson([
+                'curl',
+                '-H',
+                'Accept: application/json',
+                f'{self.endpoint}v1/chain/get_info',
+            ])
 
 
 rodeos = None
 try:
-    TestHelper.printSystemInfo("BEGIN")
-    cluster.killall(allInstances=killAll)
-    cluster.cleanup()
+        TestHelper.printSystemInfo("BEGIN")
+        cluster.killall(allInstances=killAll)
+        cluster.cleanup()
 
-    assert cluster.launch(
-        pnodes=1,
-        prodCount=1,
-        totalProducers=1,
-        totalNodes=1,
-        useBiosBootFile=False,
-        loadSystemContract=False,
-        specificExtraNodeosArgs={
-            0: ("--plugin eosio::state_history_plugin --trace-history --chain-state-history --disable-replay-opts --state-history-stride 20 --max-retained-history-files 3 " 
-                "--state-history-endpoint {} --plugin eosio::net_api_plugin --wasm-runtime eos-vm-jit -l logging.json").format(stateHistoryEndpoint)})
+        assert cluster.launch(
+            pnodes=1,
+            prodCount=1,
+            totalProducers=1,
+            totalNodes=1,
+            useBiosBootFile=False,
+            loadSystemContract=False,
+            specificExtraNodeosArgs={
+                0:
+                f"--plugin eosio::state_history_plugin --trace-history --chain-state-history --disable-replay-opts --state-history-stride 20 --max-retained-history-files 3 --state-history-endpoint {stateHistoryEndpoint} --plugin eosio::net_api_plugin --wasm-runtime eos-vm-jit -l logging.json"
+            },
+        )
 
-    producerNodeIndex = 0
-    producerNode = cluster.getNode(producerNodeIndex)
-   
-    # Create a transaction to create an account
-    Utils.Print("create a new account payloadless from the producer node")
-    payloadlessAcc = Account("payloadless")
-    payloadlessAcc.ownerPublicKey = "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
-    payloadlessAcc.activePublicKey = "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
-    producerNode.createAccount(payloadlessAcc, cluster.eosioAccount)
+        producerNodeIndex = 0
+        producerNode = cluster.getNode(producerNodeIndex)
+
+        # Create a transaction to create an account
+        Utils.Print("create a new account payloadless from the producer node")
+        payloadlessAcc = Account("payloadless")
+        payloadlessAcc.ownerPublicKey = "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+        payloadlessAcc.activePublicKey = "EOS6MRyAjQq8ud7hVNYcfnVPJqcVpscN5So8BhtHuGYqET5GDW5CV"
+        producerNode.createAccount(payloadlessAcc, cluster.eosioAccount)
 
 
-    contractDir="unittests/test-contracts/payloadless"
-    wasmFile="payloadless.wasm"
-    abiFile="payloadless.abi"
-    Utils.Print("Publish payloadless contract")
-    trans = producerNode.publishContract(payloadlessAcc, contractDir, wasmFile, abiFile, waitForTransBlock=True)
+        contractDir="unittests/test-contracts/payloadless"
+        wasmFile="payloadless.wasm"
+        abiFile="payloadless.abi"
+        Utils.Print("Publish payloadless contract")
+        trans = producerNode.publishContract(payloadlessAcc, contractDir, wasmFile, abiFile, waitForTransBlock=True)
 
-    trx = {
-        "actions": [{"account": "payloadless", "name": "doit", "authorization": [{
-          "actor": "payloadless", "permission": "active"}], "data": ""}],
-        "context_free_actions": [{"account": "payloadless", "name": "doit", "data": ""}],
-        "context_free_data": ["a1b2c3", "1a2b3c"],
-    } 
+        trx = {
+            "actions": [{"account": "payloadless", "name": "doit", "authorization": [{
+              "actor": "payloadless", "permission": "active"}], "data": ""}],
+            "context_free_actions": [{"account": "payloadless", "name": "doit", "data": ""}],
+            "context_free_data": ["a1b2c3", "1a2b3c"],
+        } 
 
-    cmd = "push transaction '{}' -p payloadless".format(json.dumps(trx))
-    trans = producerNode.processCleosCmd(cmd, cmd, silentErrors=False)
-    assert trans, "Failed to push transaction with context free data"
-    
-    cfTrxBlockNum = int(trans["processed"]["block_num"])
-    cfTrxId = trans["transaction_id"]
+        cmd = f"push transaction '{json.dumps(trx)}' -p payloadless"
+        trans = producerNode.processCleosCmd(cmd, cmd, silentErrors=False)
+        assert trans, "Failed to push transaction with context free data"
 
-    # Wait until the cfd trx block is executed to become irreversible 
-    producerNode.waitForIrreversibleBlock(cfTrxBlockNum, timeout=30) 
-    
-    Utils.Print("verify the account payloadless from producer node")
-    trans = producerNode.getEosAccount("payloadless", exitOnError=False)
-    assert trans["account_name"], "Failed to get the account payloadless"
+        cfTrxBlockNum = int(trans["processed"]["block_num"])
+        cfTrxId = trans["transaction_id"]
 
-    Utils.Print("verify the context free transaction from producer node")
-    trans_from_full = producerNode.getTransaction(cfTrxId)
-    assert trans_from_full, "Failed to get the transaction with context free data from the producer node"
+        # Wait until the cfd trx block is executed to become irreversible 
+        producerNode.waitForIrreversibleBlock(cfTrxBlockNum, timeout=30) 
 
-    with Rodeos(stateHistoryEndpoint, 'test.filter', './tests/test_filter.wasm') as rodeos:
-        rodeos.waitTillReady()
-        head_block_num = 0
-        Utils.Print("Verify rodeos get_info endpoint works")
-        while head_block_num < cfTrxBlockNum:
-            response = rodeos.get_info()
-            assert 'head_block_num' in response, "Redeos response does not contain head_block_num, response body = {}".format(json.dumps(response))
-            head_block_num = int(response['head_block_num'])
-            time.sleep(1)
-        
-        response = rodeos.get_block(cfTrxBlockNum)
-        assert response["block_num"] == cfTrxBlockNum, "Rodeos responds with wrong block"
-    
-    testSuccessful = True
+        Utils.Print("verify the account payloadless from producer node")
+        trans = producerNode.getEosAccount("payloadless", exitOnError=False)
+        assert trans["account_name"], "Failed to get the account payloadless"
+
+        Utils.Print("verify the context free transaction from producer node")
+        trans_from_full = producerNode.getTransaction(cfTrxId)
+        assert trans_from_full, "Failed to get the transaction with context free data from the producer node"
+
+        with Rodeos(stateHistoryEndpoint, 'test.filter', './tests/test_filter.wasm') as rodeos:
+                rodeos.waitTillReady()
+                head_block_num = 0
+                Utils.Print("Verify rodeos get_info endpoint works")
+                while head_block_num < cfTrxBlockNum:
+                        response = rodeos.get_info()
+                        assert (
+                            'head_block_num' in response
+                        ), f"Redeos response does not contain head_block_num, response body = {json.dumps(response)}"
+                        head_block_num = int(response['head_block_num'])
+                        time.sleep(1)
+
+                response = rodeos.get_block(cfTrxBlockNum)
+                assert response["block_num"] == cfTrxBlockNum, "Rodeos responds with wrong block"
+
+        testSuccessful = True
 finally:
-    TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
-    
+        TestHelper.shutdown(cluster, walletMgr, testSuccessful, killEosInstances, killWallet, keepLogs, killAll, dumpErrorDetails)
+
 exitCode = 0 if testSuccessful else 1
 exit(exitCode)

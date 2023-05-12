@@ -27,21 +27,23 @@ class ProducerToNode:
     def populate(node, num):
         for prod in node.producers:
             ProducerToNode.map[prod]=num
-            Utils.Print("Producer=%s for nodeNum=%s" % (prod,num))
+            Utils.Print(f"Producer={prod} for nodeNum={num}")
 
 def isValidBlockProducer(prodsActive, blockNum, node):
     blockProducer=node.getBlockProducerByNum(blockNum)
-    if blockProducer not in prodsActive:
-        return False
-    return prodsActive[blockProducer]
+    return prodsActive[blockProducer] if blockProducer in prodsActive else False
 
 def validBlockProducer(prodsActive, prodsSeen, blockNum, node):
     blockProducer=node.getBlockProducerByNum(blockNum)
     if blockProducer not in prodsActive:
-        Utils.cmdError("unexpected block producer %s at blockNum=%s" % (blockProducer,blockNum))
+        Utils.cmdError(
+            f"unexpected block producer {blockProducer} at blockNum={blockNum}"
+        )
         Utils.errorExit("Failed because of invalid block producer")
     if not prodsActive[blockProducer]:
-        Utils.cmdError("block producer %s for blockNum=%s not elected, belongs to node %s" % (blockProducer, blockNum, ProducerToNode.map[blockProducer]))
+        Utils.cmdError(
+            f"block producer {blockProducer} for blockNum={blockNum} not elected, belongs to node {ProducerToNode.map[blockProducer]}"
+        )
         Utils.errorExit("Failed because of incorrect block producer")
     prodsSeen[blockProducer]=True
 
@@ -51,7 +53,7 @@ def setActiveProducers(prodsActive, activeProducers):
 
 def verifyProductionRounds(trans, node, prodsActive, rounds):
     blockNum=node.getNextCleanProductionCycle(trans)
-    Utils.Print("Validating blockNum=%s" % (blockNum))
+    Utils.Print(f"Validating blockNum={blockNum}")
 
     temp=Utils.Debug
     Utils.Debug=False
@@ -63,7 +65,9 @@ def verifyProductionRounds(trans, node, prodsActive, rounds):
         adjust=True
         blockProducer=node.getBlockProducerByNum(blockNum)
         if lastBlockProducer!=blockProducer:
-            Utils.Print("blockProducer=%s for blockNum=%s is for node=%s" % (blockProducer, blockNum, ProducerToNode.map[blockProducer]))
+            Utils.Print(
+                f"blockProducer={blockProducer} for blockNum={blockNum} is for node={ProducerToNode.map[blockProducer]}"
+            )
         lastBlockProducer=blockProducer
         blockNum+=1
 
@@ -77,39 +81,42 @@ def verifyProductionRounds(trans, node, prodsActive, rounds):
         invalidCount+=1
         if lastBlockProducer==blockProducer:
             saw+=1;
+        elif saw>=12:
+            startingFrom=blockNum
+            if saw>12:
+                Utils.Print(
+                    f"ERROR!!!!!!!!!!!!!!      saw={saw}, blockProducer={blockProducer}, blockNum={blockNum}"
+                )
+            break
         else:
-            if saw>=12:
-                startingFrom=blockNum
-                if saw>12:
-                    Utils.Print("ERROR!!!!!!!!!!!!!!      saw=%s, blockProducer=%s, blockNum=%s" % (saw,blockProducer,blockNum))
-                break
-            else:
-                if saw > sawHigh:
-                    sawHigh = saw
-                    Utils.Print("sawHigh=%s" % (sawHigh))
-                if doPrint < 5:
-                    doPrint+=1
-                    Utils.Print("saw=%s, blockProducer=%s, blockNum=%s" % (saw,blockProducer,blockNum))
-                lastBlockProducer=blockProducer
-                saw=1
+            if saw > sawHigh:
+                sawHigh = saw
+                Utils.Print(f"sawHigh={sawHigh}")
+            if doPrint < 5:
+                doPrint+=1
+                Utils.Print(f"saw={saw}, blockProducer={blockProducer}, blockNum={blockNum}")
+            lastBlockProducer=blockProducer
+            saw=1
         blockProducer=node.getBlockProducerByNum(blockNum)
         blockNum+=1
 
     if adjust:
         blockNum-=1
 
-    Utils.Print("ADJUSTED %s blocks" % (invalidCount-1))
+    Utils.Print(f"ADJUSTED {invalidCount - 1} blocks")
 
     prodsSeen=None
     reportFirstMissedBlock=False
-    Utils.Print("Verify %s complete rounds of all producers producing" % (rounds))
+    Utils.Print(f"Verify {rounds} complete rounds of all producers producing")
     for i in range(0, rounds):
         prodsSeen={}
         lastBlockProducer=None
         for j in range(0, 21):
-            # each new set of 12 blocks should have a different blockProducer 
+            # each new set of 12 blocks should have a different blockProducer
             if lastBlockProducer is not None and lastBlockProducer==node.getBlockProducerByNum(blockNum):
-                Utils.cmdError("expected blockNum %s to be produced by any of the valid producers except %s" % (blockNum, lastBlockProducer))
+                Utils.cmdError(
+                    f"expected blockNum {blockNum} to be produced by any of the valid producers except {lastBlockProducer}"
+                )
                 Utils.errorExit("Failed because of incorrect block producer order")
 
             # make sure that the next set of 12 blocks all have the same blockProducer
@@ -121,14 +128,16 @@ def verifyProductionRounds(trans, node, prodsActive, rounds):
                     if not reportFirstMissedBlock:
                         printStr=""
                         newBlockNum=blockNum-18
-                        for l in range(0,36):
-                            printStr+="%s" % (newBlockNum)
+                        for _ in range(0,36):
+                            printStr += f"{newBlockNum}"
                             printStr+=":"
                             newBlockProducer=node.getBlockProducerByNum(newBlockNum)
-                            printStr+="%s" % (newBlockProducer)
+                            printStr += f"{newBlockProducer}"
                             printStr+="  "
                             newBlockNum+=1
-                        Utils.Print("NOTE: expected blockNum %s (started from %s) to be produced by %s, but produded by %s: round=%s, prod slot=%s, prod num=%s - %s" % (blockNum, startingFrom, lastBlockProducer, blockProducer, i, j, k, printStr))
+                        Utils.Print(
+                            f"NOTE: expected blockNum {blockNum} (started from {startingFrom}) to be produced by {lastBlockProducer}, but produded by {blockProducer}: round={i}, prod slot={j}, prod num={k} - {printStr}"
+                        )
                     reportFirstMissedBlock=True
                     break
                 blockNum+=1
@@ -136,7 +145,9 @@ def verifyProductionRounds(trans, node, prodsActive, rounds):
     # make sure that we have seen all 21 producers
     prodsSeenKeys=prodsSeen.keys()
     if len(prodsSeenKeys)!=21:
-        Utils.cmdError("only saw %s producers of expected 21. At blockNum %s only the following producers were seen: %s" % (len(prodsSeenKeys), blockNum, ",".join(prodsSeenKeys)))
+        Utils.cmdError(
+            f'only saw {len(prodsSeenKeys)} producers of expected 21. At blockNum {blockNum} only the following producers were seen: {",".join(prodsSeenKeys)}'
+        )
         Utils.errorExit("Failed because of missing block producers")
 
     Utils.Debug=temp
@@ -214,10 +225,12 @@ try:
     node=node0
     # create accounts via eosio as otherwise a bid is needed
     for account in accounts:
-        Print("Create new account %s via %s" % (account.name, cluster.eosioAccount.name))
+        Print(f"Create new account {account.name} via {cluster.eosioAccount.name}")
         trans=node.createInitializeAccount(account, cluster.eosioAccount, stakedDeposit=0, waitForTransBlock=False, stakeNet=1000, stakeCPU=1000, buyRAM=1000, exitOnError=True)
         transferAmount="100000000.0000 {0}".format(CORE_SYMBOL)
-        Print("Transfer funds %s from account %s to %s" % (transferAmount, cluster.eosioAccount.name, account.name))
+        Print(
+            f"Transfer funds {transferAmount} from account {cluster.eosioAccount.name} to {account.name}"
+        )
         node.transferFunds(cluster.eosioAccount, account, transferAmount, "test transfer")
         trans=node.delegatebw(account, 20000000.0000, 20000000.0000, waitForTransBlock=True, exitOnError=True)
 

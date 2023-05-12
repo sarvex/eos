@@ -41,7 +41,7 @@ class WalletMgr(object):
         return self.__walletPid is not None
 
     def isLocal(self):
-        return self.host=="localhost" or self.host=="127.0.0.1"
+        return self.host in ["localhost", "127.0.0.1"]
 
     def findAvailablePort(self):
         for i in range(WalletMgr.__MaxPort):
@@ -52,7 +52,7 @@ class WalletMgr(object):
                 return port
             if Utils.Debug: Utils.Print("Port %d not available for %s" % (port, Utils.EosWalletPath))
 
-        Utils.errorExit("Failed to find free port to use for %s" % (Utils.EosWalletPath))
+        Utils.errorExit(f"Failed to find free port to use for {Utils.EosWalletPath}")
 
     def launch(self):
         if not self.walletd:
@@ -67,22 +67,27 @@ class WalletMgr(object):
 
         pgrepCmd=Utils.pgrepCmd(Utils.EosWalletName)
         if Utils.Debug:
-            portTaken=False
-            if self.isLocal():
-                if not Utils.arePortsAvailable(self.port):
-                    portTaken=True
-            psOut=Utils.checkOutput(pgrepCmd.split(), ignoreError=True)
-            if psOut or portTaken:
+            portTaken = bool(self.isLocal() and not Utils.arePortsAvailable(self.port))
+            if psOut := Utils.checkOutput(pgrepCmd.split(), ignoreError=True):
                 statusMsg=""
-                if psOut:
-                    statusMsg+=" %s - {%s}." % (pgrepCmd, psOut)
+                statusMsg+=" %s - {%s}." % (pgrepCmd, psOut)
                 if portTaken:
                     statusMsg+=" port %d is NOT available." % (self.port)
-                Utils.Print("Launching %s, note similar processes running. %s" % (Utils.EosWalletName, statusMsg))
+                Utils.Print(
+                    f"Launching {Utils.EosWalletName}, note similar processes running. {statusMsg}"
+                )
+
+            elif portTaken:
+                statusMsg=""
+                statusMsg+=" port %d is NOT available." % (self.port)
+                Utils.Print(
+                    f"Launching {Utils.EosWalletName}, note similar processes running. {statusMsg}"
+                )
 
         cmd="%s --data-dir %s --config-dir %s --http-server-address=%s:%d --verbose-http-errors" % (
             Utils.EosWalletPath, WalletMgr.__walletDataDir, WalletMgr.__walletDataDir, self.host, self.port)
-        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
+        if Utils.Debug:
+            Utils.Print(f"cmd: {cmd}")
         with open(WalletMgr.__walletLogOutFile, 'w') as sout, open(WalletMgr.__walletLogErrFile, 'w') as serr:
             popen=subprocess.Popen(cmd.split(), stdout=sout, stderr=serr)
             self.__walletPid=popen.pid
@@ -91,7 +96,8 @@ class WalletMgr(object):
         time.sleep(2)
 
         try:
-            if Utils.Debug: Utils.Print("Checking if %s launched. %s" % (Utils.EosWalletName, pgrepCmd))
+            if Utils.Debug:
+                Utils.Print(f"Checking if {Utils.EosWalletName} launched. {pgrepCmd}")
             psOut=Utils.checkOutput(pgrepCmd.split())
             if Utils.Debug: Utils.Print("Launched %s. {%s}" % (Utils.EosWalletName, psOut))
         except subprocess.CalledProcessError as ex:
@@ -106,8 +112,9 @@ class WalletMgr(object):
             return wallet
         p = re.compile(r'\n\"(\w+)\"\n', re.MULTILINE)
         cmdDesc="wallet create"
-        cmd="%s %s %s --name %s --to-console" % (Utils.EosClientPath, self.getArgs(), cmdDesc, name)
-        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
+        cmd = f"{Utils.EosClientPath} {self.getArgs()} {cmdDesc} --name {name} --to-console"
+        if Utils.Debug:
+            Utils.Print(f"cmd: {cmd}")
         retStr=None
         maxRetryCount=4
         retryCount=0
@@ -132,21 +139,21 @@ class WalletMgr(object):
                     continue
 
                 msg=ex.output.decode("utf-8")
-                errorMsg="ERROR: Failed to create wallet - %s. %s" % (name, msg)
+                errorMsg = f"ERROR: Failed to create wallet - {name}. {msg}"
                 if exitOnError:
-                    Utils.errorExit("%s" % (errorMsg))
-                Utils.Print("%s" % (errorMsg))
+                    Utils.errorExit(f"{errorMsg}")
+                Utils.Print(f"{errorMsg}")
                 return None
 
         m=p.search(retStr)
         if m is None:
             if exitOnError:
-                Utils.cmdError("could not create wallet %s" % (name))
-                Utils.errorExit("Failed  to create wallet %s" % (name))
+                Utils.cmdError(f"could not create wallet {name}")
+                Utils.errorExit(f"Failed  to create wallet {name}")
 
             Utils.Print("ERROR: wallet password parser failure")
             return None
-        p=m.group(1)
+        p = m[1]
         wallet=Wallet(name, p, self.host, self.port)
         self.wallets[name] = wallet
 
@@ -157,16 +164,18 @@ class WalletMgr(object):
 
     def importKeys(self, accounts, wallet, ignoreDupKeyWarning=False):
         for account in accounts:
-            Utils.Print("Importing keys for account %s into wallet %s." % (account.name, wallet.name))
+            Utils.Print(
+                f"Importing keys for account {account.name} into wallet {wallet.name}."
+            )
             if not self.importKey(account, wallet, ignoreDupKeyWarning):
-                Utils.Print("ERROR: Failed to import key for account %s" % (account.name))
+                Utils.Print(f"ERROR: Failed to import key for account {account.name}")
                 return False
 
     def importKey(self, account, wallet, ignoreDupKeyWarning=False):
         warningMsg="Key already in wallet"
-        cmd="%s %s wallet import --name %s --private-key %s" % (
-            Utils.EosClientPath, self.getArgs(), wallet.name, account.ownerPrivateKey)
-        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
+        cmd = f"{Utils.EosClientPath} {self.getArgs()} wallet import --name {wallet.name} --private-key {account.ownerPrivateKey}"
+        if Utils.Debug:
+            Utils.Print(f"cmd: {cmd}")
         try:
             Utils.checkOutput(cmd.split())
         except subprocess.CalledProcessError as ex:
@@ -175,15 +184,17 @@ class WalletMgr(object):
                 if not ignoreDupKeyWarning:
                     Utils.Print("WARNING: This key is already imported into the wallet.")
             else:
-                Utils.Print("ERROR: Failed to import account owner key %s. %s" % (account.ownerPrivateKey, msg))
+                Utils.Print(
+                    f"ERROR: Failed to import account owner key {account.ownerPrivateKey}. {msg}"
+                )
                 return False
 
         if account.activePrivateKey is None:
             Utils.Print("WARNING: Active private key is not defined for account \"%s\"" % (account.name))
         else:
-            cmd="%s %s wallet import --name %s  --private-key %s" % (
-                Utils.EosClientPath, self.getArgs(), wallet.name, account.activePrivateKey)
-            if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
+            cmd = f"{Utils.EosClientPath} {self.getArgs()} wallet import --name {wallet.name}  --private-key {account.activePrivateKey}"
+            if Utils.Debug:
+                Utils.Print(f"cmd: {cmd}")
             try:
                 Utils.checkOutput(cmd.split())
             except subprocess.CalledProcessError as ex:
@@ -192,36 +203,42 @@ class WalletMgr(object):
                     if not ignoreDupKeyWarning:
                         Utils.Print("WARNING: This key is already imported into the wallet.")
                 else:
-                    Utils.Print("ERROR: Failed to import account active key %s. %s" %
-                                (account.activePrivateKey, msg))
+                    Utils.Print(
+                        f"ERROR: Failed to import account active key {account.activePrivateKey}. {msg}"
+                    )
                     return False
 
         return True
 
     def lockWallet(self, wallet):
-        cmd="%s %s wallet lock --name %s" % (Utils.EosClientPath, self.getArgs(), wallet.name)
-        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-        if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
-            Utils.Print("ERROR: Failed to lock wallet %s." % (wallet.name))
+        cmd = f"{Utils.EosClientPath} {self.getArgs()} wallet lock --name {wallet.name}"
+        if Utils.Debug:
+            Utils.Print(f"cmd: {cmd}")
+        if subprocess.call(cmd.split(), stdout=Utils.FNull) != 0:
+            Utils.Print(f"ERROR: Failed to lock wallet {wallet.name}.")
             return False
 
         return True
 
     def unlockWallet(self, wallet):
-        cmd="%s %s wallet unlock --name %s" % (Utils.EosClientPath, self.getArgs(), wallet.name)
-        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
+        cmd = f"{Utils.EosClientPath} {self.getArgs()} wallet unlock --name {wallet.name}"
+        if Utils.Debug:
+            Utils.Print(f"cmd: {cmd}")
         popen=subprocess.Popen(cmd.split(), stdout=Utils.FNull, stdin=subprocess.PIPE)
         _, errs = popen.communicate(input=wallet.password.encode("utf-8"))
-        if 0 != popen.wait():
-            Utils.Print("ERROR: Failed to unlock wallet %s: %s" % (wallet.name, errs.decode("utf-8")))
+        if popen.wait() != 0:
+            Utils.Print(
+                f'ERROR: Failed to unlock wallet {wallet.name}: {errs.decode("utf-8")}'
+            )
             return False
 
         return True
 
     def lockAllWallets(self):
-        cmd="%s %s wallet lock_all" % (Utils.EosClientPath, self.getArgs())
-        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
-        if 0 != subprocess.call(cmd.split(), stdout=Utils.FNull):
+        cmd = f"{Utils.EosClientPath} {self.getArgs()} wallet lock_all"
+        if Utils.Debug:
+            Utils.Print(f"cmd: {cmd}")
+        if subprocess.call(cmd.split(), stdout=Utils.FNull) != 0:
             Utils.Print("ERROR: Failed to lock all wallets.")
             return False
 
@@ -231,54 +248,52 @@ class WalletMgr(object):
         wallets=[]
 
         p = re.compile(r'\s+\"(\w+)\s\*\",?\n', re.MULTILINE)
-        cmd="%s %s wallet list" % (Utils.EosClientPath, self.getArgs())
-        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
+        cmd = f"{Utils.EosClientPath} {self.getArgs()} wallet list"
+        if Utils.Debug:
+            Utils.Print(f"cmd: {cmd}")
         retStr=None
         try:
             retStr=Utils.checkOutput(cmd.split())
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
-            Utils.Print("ERROR: Failed to open wallets. %s" % (msg))
+            Utils.Print(f"ERROR: Failed to open wallets. {msg}")
             return False
 
         m=p.findall(retStr)
         if m is None:
             Utils.Print("ERROR: wallet list parser failure")
             return None
-        wallets=m
-
-        return wallets
+        return m
 
     def getKeys(self, wallet):
         keys=[]
 
         p = re.compile(r'\n\s+\"(\w+)\"\n', re.MULTILINE)
-        cmd="%s %s wallet private_keys --name %s --password %s " % (Utils.EosClientPath, self.getArgs(), wallet.name, wallet.password)
-        if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
+        cmd = f"{Utils.EosClientPath} {self.getArgs()} wallet private_keys --name {wallet.name} --password {wallet.password} "
+        if Utils.Debug:
+            Utils.Print(f"cmd: {cmd}")
         retStr=None
         try:
             retStr=Utils.checkOutput(cmd.split())
         except subprocess.CalledProcessError as ex:
             msg=ex.output.decode("utf-8")
-            Utils.Print("ERROR: Failed to get keys. %s" % (msg))
+            Utils.Print(f"ERROR: Failed to get keys. {msg}")
             return False
         m=p.findall(retStr)
         if m is None:
             Utils.Print("ERROR: wallet private_keys parser failure")
             return None
-        keys=m
-
-        return keys
+        return m
 
 
     def dumpErrorDetails(self):
         Utils.Print("=================================================================")
         if self.__walletPid is not None:
-            Utils.Print("Contents of %s:" % (WalletMgr.__walletLogOutFile))
+            Utils.Print(f"Contents of {WalletMgr.__walletLogOutFile}:")
             Utils.Print("=================================================================")
             with open(WalletMgr.__walletLogOutFile, "r") as f:
                 shutil.copyfileobj(f, sys.stdout)
-            Utils.Print("Contents of %s:" % (WalletMgr.__walletLogErrFile))
+            Utils.Print(f"Contents of {WalletMgr.__walletLogErrFile}:")
             Utils.Print("=================================================================")
             with open(WalletMgr.__walletLogErrFile, "r") as f:
                 shutil.copyfileobj(f, sys.stdout)
@@ -290,8 +305,9 @@ class WalletMgr(object):
             os.kill(self.__walletPid, signal.SIGKILL)
 
         if allInstances:
-            cmd="pkill -9 %s" % (Utils.EosWalletName)
-            if Utils.Debug: Utils.Print("cmd: %s" % (cmd))
+            cmd = f"pkill -9 {Utils.EosWalletName}"
+            if Utils.Debug:
+                Utils.Print(f"cmd: {cmd}")
             subprocess.call(cmd.split())
 
 

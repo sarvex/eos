@@ -28,7 +28,7 @@ args=TestHelper.parse_args({"-p","-n","-d","-s","--nodes-file","--seed"
 pnodes=args.p
 topo=args.s
 delay=args.d
-total_nodes = pnodes if args.n < pnodes else args.n
+total_nodes = max(args.n, pnodes)
 debug=args.v
 nodesFile=args.nodes_file
 dontLaunch=nodesFile is not None
@@ -39,10 +39,7 @@ killAll=args.clean_run
 keepLogs=args.keep_logs
 
 killWallet=not dontKill
-killEosInstances=not dontKill
-if nodesFile is not None:
-    killEosInstances=False
-
+killEosInstances = False if nodesFile is not None else not dontKill
 Utils.Debug=debug
 testSuccessful=False
 
@@ -84,13 +81,13 @@ try:
 
     accountsCount=total_nodes
     walletName="MyWallet-%d" % (random.randrange(10000))
-    Print("Creating wallet %s if one doesn't already exist." % walletName)
+    Print(f"Creating wallet {walletName} if one doesn't already exist.")
     walletAccounts=[cluster.defproduceraAccount,cluster.defproducerbAccount]
     if not dontLaunch:
         walletAccounts.append(cluster.eosioAccount)
     wallet=walletMgr.create(walletName, walletAccounts)
     if wallet is None:
-        errorExit("Failed to create wallet %s" % (walletName))
+        errorExit(f"Failed to create wallet {walletName}")
 
     Print ("Populate wallet with %d accounts." % (accountsCount))
     if not cluster.populateWallet(accountsCount, wallet):

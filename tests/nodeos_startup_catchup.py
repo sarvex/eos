@@ -42,7 +42,7 @@ args = TestHelper.parse_args({"--prod-count","--dump-error-details","--keep-logs
                               "-p","--wallet-port"}, applicationSpecificArgs=appArgs)
 Utils.Debug=args.v
 pnodes=args.p if args.p > 0 else 1
-startedNonProdNodes = args.txn_gen_nodes if args.txn_gen_nodes >= 2 else 2
+startedNonProdNodes = max(args.txn_gen_nodes, 2)
 cluster=Cluster(walletd=True)
 dumpErrorDetails=args.dump_error_details
 keepLogs=args.keep_logs

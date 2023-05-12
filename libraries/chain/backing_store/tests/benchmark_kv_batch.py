@@ -21,7 +21,7 @@ def main():
     for key_file in key_files:
         dot_pos = key_file.find('.')
         name = key_file[:dot_pos]
-        workset_files = glob.glob(name+"*.ws")
+        workset_files = glob.glob(f"{name}*.ws")
 
         for workset in workset_files:
             runBenchMarking(key_file, workset);

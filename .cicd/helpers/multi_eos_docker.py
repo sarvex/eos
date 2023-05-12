@@ -15,20 +15,14 @@ def is_tag(ref):
     return regex.match(ref)
 
 def get_commit_for_branch(branch):
-    commit = None
-    r = requests.get('https://api.github.com/repos/EOSIO/eos/git/refs/heads/{}'.format(branch))
-    if r.status_code == 200:
-        commit = r.json().get('object').get('sha')
-
-    return commit
+    r = requests.get(
+        f'https://api.github.com/repos/EOSIO/eos/git/refs/heads/{branch}'
+    )
+    return r.json().get('object').get('sha') if r.status_code == 200 else None
 
 def get_commit_for_tag(tag):
-    commit = None
-    r = requests.get('https://api.github.com/repos/EOSIO/eos/git/refs/tags/{}'.format(tag))
-    if r.status_code == 200:
-        commit = r.json().get('object').get('sha')
-
-    return commit
+    r = requests.get(f'https://api.github.com/repos/EOSIO/eos/git/refs/tags/{tag}')
+    return r.json().get('object').get('sha') if r.status_code == 200 else None
 
 def sanitize_label(label):
     invalid = [' ', '..', '.', '/', '~', '=']

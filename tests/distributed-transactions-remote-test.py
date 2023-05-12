@@ -78,10 +78,10 @@ try:
     tfile.write(clusterMapJson)
     tfile.close()
 
-    cmd="%s --nodes-file %s %s %s" % (actualTest, nodesFile, "-v" if debug else "", "--leave-running" if dontKill else "")
-    Print("Starting up distributed transactions test: %s" % (actualTest))
+    cmd = f'{actualTest} --nodes-file {nodesFile} {"-v" if debug else ""} {"--leave-running" if dontKill else ""}'
+    Print(f"Starting up distributed transactions test: {actualTest}")
     Print("cmd: %s\n" % (cmd))
-    if 0 != subprocess.call(cmd, shell=True):
+    if subprocess.call(cmd, shell=True) != 0:
         errorExit("failed to run cmd.")
 
     testSuccessful=True

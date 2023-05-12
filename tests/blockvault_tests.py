@@ -133,7 +133,7 @@ with open(loggingFile, "w") as textFile:
     print(logging,file=textFile)
 
 def num_rows_in_table(tableName):
-    stmt = 'SELECT COUNT(*) FROM {};'.format(tableName)
+    stmt = f'SELECT COUNT(*) FROM {tableName};'
     return int(subprocess.check_output([ "scripts/postgres_control.sh", "exec", stmt]).splitlines()[2])
 
 def testFailOver(cluster, nodeToKill, addSwapFlags={}):
@@ -152,13 +152,15 @@ def testFailOver(cluster, nodeToKill, addSwapFlags={}):
     assert node0.waitForIrreversibleBlockProducedBy("vltproducera", blockNumAfterNode1Killed, retry=30), "failed to see blocks produced by vltproducera"
 
 def get_successful_constructed_block_numbers_in_file(filename):
-  result = []
-  with open(filename, "r") as f:
-    for line in f:
-      m = re.search("propose_constructed_block\(watermark=\{(\d+), \d+\}, lib=\d+\) returns true", line)
-      if m:
-        result.append(int(m.group(1)))
-  return result
+    result = []
+    with open(filename, "r") as f:
+        for line in f:
+            if m := re.search(
+                "propose_constructed_block\(watermark=\{(\d+), \d+\}, lib=\d+\) returns true",
+                line,
+            ):
+                result.append(int(m[1]))
+    return result
 
 def get_successful_constructed_block_numbers_for_node(nodeId):
   result = []
@@ -205,12 +207,23 @@ try:
     vltproducerAccount = extraProducerAccounts[0]
 
     Print("Stand up cluster")
-    if cluster.launch(onlyBios=False, pnodes=1, totalNodes=totalNodes,
-                    useBiosBootFile=False, onlySetProds=False,
-                    extraNodeosArgs=" --blocks-log-stride 20 --max-retained-block-files 3 --logconf %s" % loggingFile,
-                    specificExtraNodeosArgs={
-                        1:"--plugin eosio::blockvault_client_plugin --block-vault-backend postgresql://postgres:password@localhost"},
-                    manualProducerNodeConf={ 1: { 'key': vltproducerAccount, 'names': ['vltproducera']}}) is False:
+    if (
+        cluster.launch(
+            onlyBios=False,
+            pnodes=1,
+            totalNodes=totalNodes,
+            useBiosBootFile=False,
+            onlySetProds=False,
+            extraNodeosArgs=f" --blocks-log-stride 20 --max-retained-block-files 3 --logconf {loggingFile}",
+            specificExtraNodeosArgs={
+                1: "--plugin eosio::blockvault_client_plugin --block-vault-backend postgresql://postgres:password@localhost"
+            },
+            manualProducerNodeConf={
+                1: {'key': vltproducerAccount, 'names': ['vltproducera']}
+            },
+        )
+        is False
+    ):
         Utils.cmdError("launcher")
         Utils.errorExit("Failed to stand up eos cluster.")
 
@@ -231,14 +244,14 @@ try:
     Print("# Scenario 1: Test node 1 failover without snapshot in the block vault          #")
     Print("#################################################################################")
     testFailOver(cluster, nodeToKill=node1)
-    
+
     Print("#################################################################################")
     Print("# Scenario 2: Test node 1 failover from the snapshot in the block vault         #")
     Print("#################################################################################")
     Print("Create a snapshot")
     node1.createSnapshot()
     Print("Wait until the snapshot appears in the database")
-    Utils.waitForTruth(lambda: num_rows_in_table('SnapshotData') != 0)  
+    Utils.waitForTruth(lambda: num_rows_in_table('SnapshotData') != 0)
     testFailOver(cluster, nodeToKill=node1)
 
     Print("#################################################################################")
@@ -246,12 +259,16 @@ try:
     Print("#################################################################################")
     node2 = cluster.getNode(2)
     time.sleep(10)
-    testFailOver(cluster, nodeToKill=node2, addSwapFlags={
-        "--plugin": "eosio::blockvault_client_plugin",
-        "--block-vault-backend": "postgresql://postgres:password@localhost",
-        "--producer-name": "vltproducera",
-        "--signature-provider": "{}=KEY:{}".format(vltproducerAccount.ownerPublicKey, vltproducerAccount.ownerPrivateKey)
-    })
+    testFailOver(
+        cluster,
+        nodeToKill=node2,
+        addSwapFlags={
+            "--plugin": "eosio::blockvault_client_plugin",
+            "--block-vault-backend": "postgresql://postgres:password@localhost",
+            "--producer-name": "vltproducera",
+            "--signature-provider": f"{vltproducerAccount.ownerPublicKey}=KEY:{vltproducerAccount.ownerPrivateKey}",
+        },
+    )
 
     assert node2.waitForLibToAdvance(timeout=60)
 
@@ -272,7 +289,9 @@ try:
     double_produced_block_numbers = get_successful_constructed_block_numbers_for_node(1).intersection(get_successful_constructed_block_numbers_for_node(2))
 
     if len(double_produced_block_numbers) != 0:
-      Utils.errorExit("Found double production for the following blocks {}".format(double_produced_block_numbers))
+        Utils.errorExit(
+            f"Found double production for the following blocks {double_produced_block_numbers}"
+        )
 
     testSuccessful=True
 finally:

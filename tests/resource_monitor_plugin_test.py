@@ -17,12 +17,12 @@ Print=Utils.Print
 errorExit=Utils.errorExit
 
 stagingDir="rsmStaging"
-dataDir=stagingDir+"/data"
-configDir=stagingDir+"/etc"
-traceDir=dataDir+"/traceDir"
+dataDir = f"{stagingDir}/data"
+configDir = f"{stagingDir}/etc"
+traceDir = f"{dataDir}/traceDir"
 
-loggingFile=configDir+"/logging.json"
-stderrFile=dataDir + "/stderr.txt"
+loggingFile = f"{configDir}/logging.json"
+stderrFile = f"{dataDir}/stderr.txt"
 
 testNum=0
 
@@ -78,10 +78,11 @@ def prepareDirectories():
 def runNodeos(extraNodeosArgs, myTimeout):
     """Startup nodeos, wait for timeout (before forced shutdown) and collect output."""
     if debug: Print("Launching nodeos process.")
-    cmd="programs/nodeos/nodeos --config-dir rsmStaging/etc -e -p eosio --plugin eosio::chain_api_plugin --plugin eosio::history_api_plugin --data-dir " + dataDir + " "
+    cmd = f"programs/nodeos/nodeos --config-dir rsmStaging/etc -e -p eosio --plugin eosio::chain_api_plugin --plugin eosio::history_api_plugin --data-dir {dataDir} "
 
     cmd=cmd + extraNodeosArgs;
-    if debug: Print("cmd: %s" % (cmd))
+    if debug:
+        Print(f"cmd: {cmd}")
     with open(stderrFile, 'w') as serr:
         proc=subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=serr)
 
@@ -116,7 +117,7 @@ def testCommon(title, extraNodeosArgs, expectedMsgs):
 
 def extractTimestamp(msg):
     matches = re.compile("\s+([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3})\s").search(msg)
-    return datetime.strptime(matches.group(0).strip(), '%Y-%m-%dT%H:%M:%S.%f')
+    return datetime.strptime(matches[0].strip(), '%Y-%m-%dT%H:%M:%S.%f')
 
 intervalTolerance = 0.15 # 15%
 
@@ -139,14 +140,14 @@ def isMsgIntervalValid(msg, expectedInterval):
                 pre = line
     return hasMsg, validInterval
 
-fillerFile = dataDir + '/filler.tmp'
+fillerFile = f'{dataDir}/filler.tmp'
 
 def fillFS(dir, threshold):
     total, used, available = shutil.disk_usage(dir)
     warningAvailable = total * (100 - threshold) // 100
     if available > warningAvailable:
         filesize = (available - warningAvailable) * 1.1 // (1024 * 1024) # add 0.1 redundancy to ensure warning be triggered
-        os.system('dd if=/dev/zero of=' + fillerFile + ' count=' + str(filesize) + ' bs=1M')
+        os.system(f'dd if=/dev/zero of={fillerFile} count={str(filesize)} bs=1M')
 
 testIntervalMaxTimeout = 300 # Assume nodeos at most runs 300 sec for this test
 
@@ -223,7 +224,16 @@ try:
     cluster.killall(allInstances=killAll)
     cluster.cleanup()
 
-    if cluster.launch(pnodes=pnodes, totalNodes=total_nodes, topo=topo,delay=delay, dontBootstrap=True) is False:
+    if (
+        cluster.launch(
+            total_nodes=total_nodes,
+            totalNodes=total_nodes,
+            topo=topo,
+            delay=delay,
+            dontBootstrap=True,
+        )
+        is False
+    ):
         errorExit("Failed to stand up eos cluster.")
     cluster.killall(allInstances=killAll)
 

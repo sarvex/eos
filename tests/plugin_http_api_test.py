@@ -38,26 +38,16 @@ class PluginHttpTest(unittest.TestCase):
         time.sleep(self.sleep_s)
 
     # start keosd and nodeos
-    def startEnv(self) :
+    def startEnv(self):
         self.createDataDir(self)
         self.keosd.launch()
-        nodeos_plugins = (" --plugin %s --plugin %s --plugin %s --plugin %s --plugin %s --plugin %s --plugin %s --plugin %s "
-                          " --plugin %s --plugin %s --plugin %s --plugin %s ") % ( "eosio::trace_api_plugin",
-                                                                                   "eosio::test_control_api_plugin",
-                                                                                   "eosio::test_control_plugin",
-                                                                                   "eosio::net_plugin",
-                                                                                   "eosio::net_api_plugin",
-                                                                                   "eosio::producer_plugin",
-                                                                                   "eosio::producer_api_plugin",
-                                                                                   "eosio::chain_api_plugin",
-                                                                                   "eosio::http_plugin",
-                                                                                   "eosio::db_size_api_plugin",
-                                                                                   "eosio::history_plugin",
-                                                                                   "eosio::history_api_plugin")
         nodeos_flags = (" --data-dir=%s --trace-dir=%s --trace-no-abis --filter-on=%s --access-control-allow-origin=%s "
                         "--contracts-console --http-validate-host=%s --verbose-http-errors "
                         "--p2p-peer-address localhost:9011 ") % (self.data_dir, self.data_dir, "\"*\"", "\'*\'", "false")
-        start_nodeos_cmd = ("%s -e -p eosio %s %s ") % (Utils.EosServerPath, nodeos_plugins, nodeos_flags)
+        nodeos_plugins = ' --plugin eosio::trace_api_plugin --plugin eosio::test_control_api_plugin --plugin eosio::test_control_plugin --plugin eosio::net_plugin --plugin eosio::net_api_plugin --plugin eosio::producer_plugin --plugin eosio::producer_api_plugin --plugin eosio::chain_api_plugin  --plugin eosio::http_plugin --plugin eosio::db_size_api_plugin --plugin eosio::history_plugin --plugin eosio::history_api_plugin '
+        start_nodeos_cmd = (
+            f"{Utils.EosServerPath} -e -p eosio {nodeos_plugins} {nodeos_flags} "
+        )
         self.nodeos.launchCmd(start_nodeos_cmd, self.node_id)
         time.sleep(self.sleep_s)
 

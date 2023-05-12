@@ -50,8 +50,8 @@ def analyzeBPs(bps0, bps1, expectDivergence):
             prod0=bp0["prod"]
             blockNum1=bp1["blockNum"]
             prod1=bp1["prod"]
-            numDiff=True if blockNum0!=blockNum1 else False
-            prodDiff=True if prod0!=prod1 else False
+            numDiff = blockNum0 != blockNum1
+            prodDiff = prod0 != prod1
             if numDiff or prodDiff:
                 index=i
                 if firstDivergence is None:
@@ -59,7 +59,7 @@ def analyzeBPs(bps0, bps1, expectDivergence):
                 if not expectDivergence:
                     errorInDivergence=True
                 break
-            bpsStr+=str(blockNum0)+"->"+prod0
+            bpsStr += f"{str(blockNum0)}->{prod0}"
 
         if index is None:
             if expectDivergence:
@@ -70,7 +70,7 @@ def analyzeBPs(bps0, bps1, expectDivergence):
         bpsStr0=None
         bpsStr2=None
         start=length
-        for i in range(index,length):
+        for i in range(index, start):
             if bpsStr0 is None:
                 bpsStr0=""
                 bpsStr1=""
@@ -97,11 +97,11 @@ def analyzeBPs(bps0, bps1, expectDivergence):
             break
 
     if errorInDivergence:
-        msg="Failed analyzing block producers - "
-        if expectDivergence:
-            msg+="nodes do not indicate different block producers for the same blocks, but they are expected to diverge at some point."
-        else:
-            msg+="did not expect nodes to indicate different block producers for the same blocks."
+        msg = "Failed analyzing block producers - " + (
+            "nodes do not indicate different block producers for the same blocks, but they are expected to diverge at some point."
+            if expectDivergence
+            else "did not expect nodes to indicate different block producers for the same blocks."
+        )
         msg+="\n  Matching Blocks= %s \n  Diverging branch node0= %s \n  Diverging branch node1= %s" % (bpsStr,bpsStr0,bpsStr1)
         Utils.errorExit(msg)
 
